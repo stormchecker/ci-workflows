@@ -1,0 +1,27 @@
+# Send a notification email in case of a CI failure
+on:
+  workflow_call:
+    inputs:
+      conclusion:
+        required: true
+        type: string
+
+
+jobs:
+  name: Email notification
+  runs-on: ubuntu-latest
+  steps:
+    - uses: dawidd6/action-send-mail@v16
+      with:
+        server_address: ${{ secrets.STORM_CI_MAIL_SERVER }}
+        server_port: 587
+        username: ${{ secrets.STORM_CI_MAIL_USERNAME }}
+        password: ${{ secrets.STORM_CI_MAIL_PASSWORD }}
+        subject: "[You broke it] CI run failed for ${{ github.repository }}"
+        body:
+          "CI job of ${{ github.repository }} has failed for commit ${{ github.sha }}.\n\
+          The error type is: ${{ inputs.conclusion }}.\n\n\
+          For more information, see https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        to: ${{ secrets.STORM_CI_MAIL_RECIPIENTS }}
+        from: Github Actions <you-broke-it@stormchecker.org>
+      if: inputs.conclusion != 'success'  # notify only if failure
