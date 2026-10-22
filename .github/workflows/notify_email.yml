@@ -4,27 +4,43 @@ name: Email notification
 on:
   workflow_call:
     inputs:
-      conclusion:
-        description: "Workflow conclusion"
-        required: true
+      title:
+        description: "Name of the workflow used in the email subject"
+        required: false
         type: string
+        default: "CI"
 
 
 jobs:
   notify:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
     steps:
-      - if: inputs.conclusion != 'success'  # notify only if failure
-        uses: dawidd6/action-send-mail@v16
+      - name: Get failed jobs
+        id: check
+        # Considers all jobs of the calling workflow run, including indirect dependencies.
+        # The currently running notify job has no conclusion yet and is therefore ignored.
+        # Every finished job that is not successful, skipped or neutral counts as failed
+        # (failure, cancelled, timed_out, startup_failure, ...).
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          failed=$(gh api --paginate --slurp repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs \
+            | jq -r '[.[].jobs[] | select(.conclusion != null and (.conclusion | IN("success", "skipped", "neutral") | not)) | .name] | join(", ")')
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+      - if: steps.check.outputs.failed != ''  # notify only if failure
+        uses: dawidd6/action-send-mail@v22
         with:
           server_address: ${{ secrets.STORM_CI_MAIL_SERVER }}
           server_port: 587
+          require_tls: true
           username: ${{ secrets.STORM_CI_MAIL_USERNAME }}
           password: ${{ secrets.STORM_CI_MAIL_PASSWORD }}
-          subject: "[You broke it] CI run failed for ${{ github.repository }}"
+          subject: "[You broke it] ${{ inputs.title }} failed for ${{ github.repository }}"
           body:
-            "CI job of ${{ github.repository }} has failed for commit ${{ github.sha }}.\n\
-            The error type is: ${{ inputs.conclusion }}.\n\n\
+            "${{ inputs.title }} of ${{ github.repository }} has failed for commit ${{ github.sha }}.\n\
+            Failed jobs: ${{ steps.check.outputs.failed }}\n\n\
             For more information, see https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           to: ${{ secrets.STORM_CI_MAIL_RECIPIENTS }}
           from: Github Actions <you-broke-it@stormchecker.org>
