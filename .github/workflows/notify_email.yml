@@ -25,13 +25,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           failed=$(gh api --paginate --slurp repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs \
-            | jq -r '[.[].jobs[] | select(.conclusion == "failure" or .conclusion == "cancelled") | .name] | join(", ")')
+            | jq -r '[.[].jobs[] | select(.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out")| .name] | join(", ")')
           echo "failed=$failed" >> "$GITHUB_OUTPUT"
       - if: steps.check.outputs.failed != ''  # notify only if failure
         uses: dawidd6/action-send-mail@v22
         with:
           server_address: ${{ secrets.STORM_CI_MAIL_SERVER }}
           server_port: 587
+          require_tls: true
           username: ${{ secrets.STORM_CI_MAIL_USERNAME }}
           password: ${{ secrets.STORM_CI_MAIL_PASSWORD }}
           subject: "[You broke it] ${{ inputs.title }} failed for ${{ github.repository }}"
