@@ -30,7 +30,7 @@ jobs:
             | jq -r '[.[].jobs[] | select(.conclusion != null and (.conclusion | IN("success", "skipped", "neutral") | not)) | .name] | join(", ")')
           echo "failed=$failed" >> "$GITHUB_OUTPUT"
       - if: steps.check.outputs.failed != ''  # notify only if failure
-        uses: dawidd6/action-send-mail@v22
+        uses: dawidd6/action-send-mail@v23
         with:
           server_address: ${{ secrets.STORM_CI_MAIL_SERVER }}
           server_port: 587
