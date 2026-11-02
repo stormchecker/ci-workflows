@@ -25,12 +25,17 @@ The secrets `STORM_CI_MAIL_SERVER`, `STORM_CI_MAIL_USERNAME`, `STORM_CI_MAIL_PAS
 
 ## Docker release
 `release_docker.yml` builds a Release (`<tag>`) and a Debug (`<tag>-debug`) Docker image for `linux/amd64` and `linux/arm64` and pushes them to DockerHub.
+The build is distributed across multiple runners using [Docker's reusable workflow](https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners).
+The image is built from the commit of the calling workflow run.
 
 Example call:
 
 ```yaml
   release:
     uses: stormchecker/ci-workflows/.github/workflows/release_docker.yml@v1
+    permissions:
+      contents: read
+      id-token: write  # to sign the provenance of the images
     with:
       image: movesrwth/storm
       tag: ${{ inputs.tag }}
