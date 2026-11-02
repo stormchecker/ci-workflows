@@ -39,6 +39,7 @@ Example call:
     with:
       image: movesrwth/storm
       tag: ${{ inputs.tag }}
+      push: true
       dockerfile: .github/workflows/Dockerfile.release
       # Additional build arguments for both variants (one per line)
       build_args: |
