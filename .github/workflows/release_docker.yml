@@ -1,0 +1,90 @@
+# Builds a Docker image in Release/Debug mode and deploys it to DockerHub.
+# The Release image is tagged "<tag>", the Debug image is tagged "<tag>-debug".
+# Build is distributed across multiple runners (one platform per runner) using Docker's reusable workflow, see:
+# https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners
+#
+# The image is built from the commit of the calling workflow run.
+# Callers must grant `id-token: write` (used to sign the provenance of the images).
+name: Release Docker
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: "Name of the Docker image (e.g. movesrwth/storm)"
+        required: true
+        type: string
+      tag:
+        description: "Docker tag (e.g. 1.1.0 or stable)"
+        required: true
+        type: string
+      dockerfile:
+        description: "Path to the Dockerfile"
+        required: false
+        type: string
+        default: "Dockerfile"
+      nr_threads:
+        description: "Number of parallel build jobs"
+        required: false
+        type: string
+        # GitHub runners currently have 4 cores
+        default: "4"
+      build_args:
+        description: "Additional build arguments (one KEY=value per line) for both variants"
+        required: false
+        type: string
+        default: ""
+      debug_build_args:
+        description: "Additional build arguments (one KEY=value per line) for the Debug variant only"
+        required: false
+        type: string
+        default: ""
+      release_build_args:
+        description: "Additional build arguments (one KEY=value per line) for the Release variant only"
+        required: false
+        type: string
+        default: ""
+    secrets:
+      STORM_CI_DOCKER_USERNAME:
+        description: "DockerHub user name"
+        required: false
+      STORM_CI_DOCKER_TOKEN:
+        description: "DockerHub access token"
+        required: false
+
+jobs:
+  build:
+    name: ${{ matrix.build_type }}
+    strategy:
+      # Build both variants independently
+      fail-fast: false
+      matrix:
+        include:
+          - {build_type: Debug, tag_suffix: "-debug"}
+          - {build_type: Release, tag_suffix: ""}
+    uses: docker/github-builder/.github/workflows/build.yml@v1
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      output: image
+      # Only push (and login) if using original repo
+      push: ${{ github.repository_owner == 'stormchecker' }}
+      registry-login: ${{ github.repository_owner == 'stormchecker' }}
+      platforms: linux/amd64,linux/arm64
+      file: ${{ inputs.dockerfile }}
+      # Empty lines are ignored
+      build-args: |
+        build_type=${{ matrix.build_type }}
+        no_threads=${{ inputs.nr_threads }}
+        ${{ inputs.build_args }}
+        ${{ matrix.build_type == 'Debug' && inputs.debug_build_args || '' }}
+        ${{ matrix.build_type == 'Release' && inputs.release_build_args || '' }}
+      meta-images: ${{ inputs.image }}
+      meta-tags: |
+        type=raw,${{ inputs.tag }}${{ matrix.tag_suffix }}
+    secrets:
+      registry-auths: |
+        - registry: docker.io
+          username: ${{ secrets.STORM_CI_DOCKER_USERNAME }}
+          password: ${{ secrets.STORM_CI_DOCKER_TOKEN }}
