@@ -18,6 +18,11 @@ on:
         description: "Docker tag (e.g. 1.1.0 or stable)"
         required: true
         type: string
+      push:
+        description: "Whether to push the images to DockerHub (only possible in the stormchecker organization)"
+        required: false
+        type: boolean
+        default: true
       dockerfile:
         description: "Path to the Dockerfile"
         required: false
@@ -68,9 +73,9 @@ jobs:
       id-token: write
     with:
       output: image
-      # Only push (and login) if using original repo
-      push: ${{ github.repository_owner == 'stormchecker' }}
-      registry-login: ${{ github.repository_owner == 'stormchecker' }}
+      # Only push (and login) if requested and using original repo
+      push: ${{ inputs.push && github.repository_owner == 'stormchecker' }}
+      registry-login: ${{ inputs.push && github.repository_owner == 'stormchecker' }}
       platforms: linux/amd64,linux/arm64
       file: ${{ inputs.dockerfile }}
       # Empty lines are ignored
