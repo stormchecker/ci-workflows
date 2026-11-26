@@ -1,17 +1,17 @@
-# Builds a Docker image in Release/Debug mode and deploys it to DockerHub.
+# Builds a Docker image in Release/Debug mode and deploys it to GHCR and/or DockerHub.
 # The Release image is tagged "<tag>", the Debug image is tagged "<tag>-debug".
 # Build is distributed across multiple runners (one platform per runner) using Docker's reusable workflow, see:
 # https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners
 #
 # The image is built from the commit of the calling workflow run.
-# Callers must grant `id-token: write` (used to sign the provenance of the images).
+# Callers must grant `packages: write` (GHCR) and `id-token: write` (used to sign the provenance of the images).
 name: Release Docker
 
 on:
   workflow_call:
     inputs:
       image:
-        description: "Name of the Docker image (e.g. movesrwth/storm)"
+        description: "Name(s) of the Docker image, one per line (e.g. ghcr.io/stormchecker/storm and movesrwth/storm). The registry is determined by the name, names without registry are pushed to DockerHub."
         required: true
         type: string
       tag:
@@ -19,7 +19,7 @@ on:
         required: true
         type: string
       push:
-        description: "Whether to push the images to DockerHub (only possible in the stormchecker organization)"
+        description: "Whether to push the images to the registries (only possible in the stormchecker organization)"
         required: false
         type: boolean
         default: true
@@ -70,6 +70,7 @@ jobs:
     uses: docker/github-builder/.github/workflows/build.yml@v1
     permissions:
       contents: read
+      packages: write
       id-token: write
     with:
       output: image
@@ -87,9 +88,12 @@ jobs:
         ${{ matrix.build_type == 'Release' && inputs.release_build_args || '' }}
       meta-images: ${{ inputs.image }}
       meta-tags: |
-        type=raw,${{ inputs.tag }}${{ matrix.tag_suffix }}
+        type=raw,value=${{ inputs.tag }}${{ matrix.tag_suffix }}
     secrets:
       registry-auths: |
+        - registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         - registry: docker.io
           username: ${{ secrets.STORM_CI_DOCKER_USERNAME }}
           password: ${{ secrets.STORM_CI_DOCKER_TOKEN }}
