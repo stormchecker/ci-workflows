@@ -51,10 +51,10 @@ on:
         default: ""
     secrets:
       STORM_CI_DOCKER_USERNAME:
-        description: "DockerHub user name"
+        description: "DockerHub user name (only needed for pushing to DockerHub)"
         required: false
       STORM_CI_DOCKER_TOKEN:
-        description: "DockerHub access token"
+        description: "DockerHub access token (only needed for pushing to DockerHub)"
         required: false
 
 jobs:
@@ -94,6 +94,6 @@ jobs:
         - registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-        - registry: docker.io
-          username: ${{ secrets.STORM_CI_DOCKER_USERNAME }}
-          password: ${{ secrets.STORM_CI_DOCKER_TOKEN }}
+        # Only add DockerHub credentials if they are available
+        # Use JSON-quoted values to support arbitrary characters
+        ${{ (secrets.STORM_CI_DOCKER_USERNAME != '' && secrets.STORM_CI_DOCKER_TOKEN != '') && format('- {{"registry": "docker.io", "username": {0}, "password": {1}}}', toJSON(secrets.STORM_CI_DOCKER_USERNAME), toJSON(secrets.STORM_CI_DOCKER_TOKEN)) || '' }}
