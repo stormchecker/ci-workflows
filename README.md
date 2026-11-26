@@ -12,7 +12,7 @@ Add it as the last job of a workflow:
     needs: [job_a, job_b]
     # Only run in main repo and even if previous step failed
     if: github.repository_owner == 'stormchecker' && always()
-    uses: stormchecker/ci-workflows/.github/workflows/notify_email.yml@v1
+    uses: stormchecker/ci-workflows/.github/workflows/notify_email.yml@v2
     with:
       # Optional, used in the email subject
       title: CI
@@ -32,7 +32,7 @@ Example call:
 
 ```yaml
   release:
-    uses: stormchecker/ci-workflows/.github/workflows/release_docker.yml@v1
+    uses: stormchecker/ci-workflows/.github/workflows/release_docker.yml@v2
     permissions:
       contents: read
       packages: write  # to push to GHCR
